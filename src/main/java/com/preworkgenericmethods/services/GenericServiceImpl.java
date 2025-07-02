@@ -1,20 +1,48 @@
 package com.preworkgenericmethods.services;
 
+import com.preworkgenericmethods.config.Mapper;
 import com.preworkgenericmethods.repositories.GenericRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
 @Transactional
-public abstract class GenericServiceImpl<T, ID extends Serializable> implements GenericService<T, ID> {
+@RequiredArgsConstructor
+public abstract class GenericServiceImpl<T, ID extends Serializable, DTO>
+        implements GenericService<T, ID, DTO> {
 
     protected final GenericRepository<T, ID> repository;
 
-    public GenericServiceImpl(GenericRepository<T, ID> repository) {
-        this.repository = repository;
+    // 1. Tekrar eden saveWithRelations metodu kaldırıldı
+    // 2. handleRelations abstract metodu tanımlandı
+    public abstract void handleRelations(T entity, DTO dto);
+
+    // 3. getEntityClass implementasyonu alt sınıflara bırakıldı
+    @Override
+    public abstract Class<T> getEntityClass();
+
+    @Override
+    public T saveWithRelations(T entity, DTO dto) {
+        if (dto != null) {
+            handleRelations(entity, dto);
+        }
+        return repository.save(entity);
     }
 
+    @Override
+    public T updateWithRelations(T existingEntity, DTO dto) {
+        // 4. Null kontrolü eklendi
+        if (dto != null) {
+            Mapper.map(dto, existingEntity);
+            handleRelations(existingEntity, dto);
+        }
+        return repository.save(existingEntity);
+    }
+
+    // CRUD metotları
     @Override
     public List<T> findAll() {
         return repository.findAll();
